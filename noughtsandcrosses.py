@@ -1,54 +1,39 @@
 """
-Noughts and Crosses(Tic-Tac-Toe)
+Noughts and Crosses (Tic-Tac-Toe)
 Student Name: Janit Saru Magar
 Student ID: 2603768
 """
 
 import random
-import os.path
+import os
 import json
-
-random.seed()
 
 
 def draw_board(board):
     """
-    Display the noughts and crosses game board.
+    Display the noughts and crosses board.
     """
     print("      -----------")
-    for i in range(3):
-        print("      |", board[i][0], "|", board[i][1], "|", board[i][2], "|")
+    for row in board:
+        print(f"      | {row[0]} | {row[1]} | {row[2]} |")
         print("      -----------")
 
 
 def welcome(board):
     """
-    Display the welcome message, show the initial board layout,
-    and explain how to enter moves.
-
-    Args:
-        board (list[list[str]]): The 3x3 game board (list of lists).
-
-    Returns:
-        None
+    Display welcome message and initial board layout.
     """
     print("-" * 60)
-    print('Welcome to Noughts and Crosses')
+    print("Welcome to Noughts and Crosses")
     print("Board layout is shown below:")
     draw_board(board)
-    print("Enter number 1 to 9 when asked.")
+    print("Enter a number between 1 and 9 to choose a square.")
     print("-" * 60)
 
 
 def initialise_board(board):
     """
-    Reset the board by filling all cells with a single space ' '.
-
-    Args:
-        board (list[list[str]]): The 3x3 game board to be cleared.
-
-    Returns:
-        list[list[str]]: The cleared board (same object, modified in place).
+    Reset all board cells to a single space ' '.
     """
     for row in range(3):
         for col in range(3):
@@ -58,33 +43,25 @@ def initialise_board(board):
 
 def get_player_move(board):
     """
-    Prompt the player to choose a square (1-9) and return its row and column.
-
-    Keeps asking until a valid, empty square is chosen.
-
-    Args:
-        board (list[list[str]]): The current 3x3 game board.
-
-    Returns:
-        tuple[int, int]: (row, col) indices (0-based) of the chosen square.
+    Ask the player to choose a valid square (1-9).
+    Return row and column indices.
     """
     while True:
-        print("-" * 30)
         try:
-            num = int(input("Choose square 1-9: "))
+            choice = int(input("Choose square (1-9): "))
         except ValueError:
-            print("Please enter a number.")
+            print("Please enter a valid number.")
             continue
 
-        if num < 1 or num > 9:
+        if choice < 1 or choice > 9:
             print("Number must be between 1 and 9.")
             continue
 
-        row = (num - 1) // 3
-        col = (num - 1) % 3
+        row = (choice - 1) // 3
+        col = (choice - 1) % 3
 
         if board[row][col] != ' ':
-            print("This square is already taken.")
+            print("Square already taken. Choose another.")
             continue
 
         return row, col
@@ -92,46 +69,72 @@ def get_player_move(board):
 
 def choose_computer_move(board):
     """
-    Select a random empty square for the computer's move (O).
-
-    Args:
-        board (list[list[str]]): The current 3x3 game board.
-
-    Returns:
-        tuple[int, int]: (row, col) indices of the chosen empty square.
+    Choose the best move for the computer (O).
+    Strategy:
+    1. Win if possible.
+    2. Block player win.
+    3. Take centre.
+    4. Take corner.
+    5. Random move.
     """
-    while True:
-        row = random.randint(0, 2)
-        col = random.randint(0, 2)
-        if board[row][col] == ' ':
-            return row, col
+    # 1. Try to win
+    for row in range(3):
+        for col in range(3):
+            if board[row][col] == ' ':
+                board[row][col] = 'O'
+                if check_for_win(board, 'O'):
+                    board[row][col] = ' '
+                    return row, col
+                board[row][col] = ' '
+
+    # 2. Block player win
+    for row in range(3):
+        for col in range(3):
+            if board[row][col] == ' ':
+                board[row][col] = 'X'
+                if check_for_win(board, 'X'):
+                    board[row][col] = ' '
+                    return row, col
+                board[row][col] = ' '
+
+    # 3. Take centre
+    if board[1][1] == ' ':
+        return 1, 1
+
+    # 4. Take a corner
+    corners = [(0, 0), (0, 2), (2, 0), (2, 2)]
+    empty_corners = [
+        (row, col) for row, col in corners
+        if board[row][col] == ' '
+    ]
+    if empty_corners:
+        return random.choice(empty_corners)
+
+    # 5. Random move (remaining spaces)
+    empty_spaces = [
+        (row, col)
+        for row in range(3)
+        for col in range(3)
+        if board[row][col] == ' '
+    ]
+    return random.choice(empty_spaces)
 
 
 def check_for_win(board, mark):
     """
-    Check if the given mark ('X' or 'O') has three in a row, column, or diagonal.
-
-    Args:
-        board (list[list[str]]): The current 3x3 game board.
-        mark (str): The symbol to check ('X' or 'O').
-
-    Returns:
-        bool: True if the mark has won, False otherwise.
+    Return True if the given mark has won.
     """
-    # rows
-    for r in range(3):
-        if board[r][0] == mark and board[r][1] == mark and board[r][2] == mark:
+    # Check rows and columns
+    for index in range(3):
+        if all(board[index][col] == mark for col in range(3)):
+            return True
+        if all(board[row][index] == mark for row in range(3)):
             return True
 
-    # columns
-    for c in range(3):
-        if board[0][c] == mark and board[1][c] == mark and board[2][c] == mark:
-            return True
-
-    # diagonals
-    if board[0][0] == mark and board[1][1] == mark and board[2][2] == mark:
+    # Check diagonals
+    if all(board[i][i] == mark for i in range(3)):
         return True
-    if board[0][2] == mark and board[1][1] == mark and board[2][0] == mark:
+    if all(board[i][2 - i] == mark for i in range(3)):
         return True
 
     return False
@@ -139,57 +142,49 @@ def check_for_win(board, mark):
 
 def check_for_draw(board):
     """
-    Check if the game is a draw (board is full with no winner).
-
-    Args:
-        board (list[list[str]]): The current 3x3 game board.
-
-    Returns:
-        bool: True if the board is completely filled, False if any empty cell remains.
+    Return True if board is full, False otherwise.
     """
-    for row in range(3):
-        for col in range(3):
-            if board[row][col] == ' ':
-                return False
-    return True
+    return all(
+        board[row][col] != ' '
+        for row in range(3)
+        for col in range(3)
+    )
 
 
 def play_game(board):
     """
-    Run a complete game of Noughts and Crosses between player (X) and computer (O).
-
-    Args:
-        board (list[list[str]]): The 3x3 game board to play on.
-
+    Play a full game.
     Returns:
-        int: 1 if player wins, -1 if computer wins, 0 if draw.
+        1  -> Player win
+        0  -> Draw
+        -1 -> Computer win
     """
     initialise_board(board)
     draw_board(board)
 
     while True:
-        print("-" * 30)
-        print("Your turn (X)")
+        # Player turn
+        print("\nYour turn (X)")
         row, col = get_player_move(board)
-        board[row][col] = "X"
+        board[row][col] = 'X'
         draw_board(board)
 
-        if check_for_win(board, "X"):
-            print("You Won!")
+        if check_for_win(board, 'X'):
+            print("You won!")
             return 1
 
         if check_for_draw(board):
             print("It's a draw!")
             return 0
 
-        print("-" * 30)
-        print("Computer's turn (O)")
+        # Computer turn
+        print("\nComputer's turn (O)")
         row, col = choose_computer_move(board)
-        board[row][col] = "O"
+        board[row][col] = 'O'
         draw_board(board)
 
-        if check_for_win(board, "O"):
-            print("Computer Won!")
+        if check_for_win(board, 'O'):
+            print("Computer won!")
             return -1
 
         if check_for_draw(board):
@@ -199,10 +194,7 @@ def play_game(board):
 
 def menu():
     """
-    Display the main menu and get the user's choice.
-
-    Returns:
-        str: The user's selected option ('1', '2', '3', or 'q').
+    Display the main menu and return valid choice.
     """
     print("-" * 60)
     print("1 - Play the game")
@@ -212,74 +204,65 @@ def menu():
     print("-" * 60)
 
     while True:
-        choice = input("Enter 1, 2, 3 or q: ")
-        if choice in ["1", "2", "3", "q"]:
+        choice = input("Enter 1, 2, 3 or q: ").lower()
+        if choice in ('1', '2', '3', 'q'):
             return choice
-        print("Wrong choice. Please enter 1, 2, 3 or q.")
+        print("Invalid choice. Please try again.")
 
 
 def load_scores():
     """
-    Load player scores from 'leaderboard.txt' if the file exists.
-
-    Returns:
-        dict: Dictionary of {player_name: score} or empty dict if file missing/invalid.
+    Load leaderboard scores from leaderboard.txt.
+    Return dictionary.
     """
-    leaders = {}
-    if os.path.exists('leaderboard.txt'):
-        try:
-            with open("leaderboard.txt", 'r', encoding='utf-8') as file:
-                leaders = json.load(file)
-        except:
-            leaders = {}
-    return leaders
+    if not os.path.exists("leaderboard.txt"):
+        return {}
+
+    try:
+        with open("leaderboard.txt", "r", encoding="utf-8") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, OSError):
+        return {}
 
 
 def save_score(score):
     """
-    Ask for player name and save/update their score in 'leaderboard.txt'.
-
-    Args:
-        score (int): The score to add (usually 1 for win, 0 for draw/loss).
-
-    Returns:
-        None
+    Ask for player name and save/update score.
     """
     while True:
-        name = input("Enter your name: ")
-        if name != '':
+        name = input("Enter your name: ").strip()
+        if name:
             break
         print("Name cannot be empty.")
 
     leaders = load_scores()
+    leaders[name] = leaders.get(name, 0) + score
 
-    if name in leaders:
-        leaders[name] += score
-    else:
-        leaders[name] = score
+    with open("leaderboard.txt", "w", encoding="utf-8") as file:
+        json.dump(leaders, file)
 
-    with open("leaderboard.txt", 'w', encoding='utf-8') as f:
-        json.dump(leaders, f)
-
-    print("Score saved for", name)
+    print(f"Score saved for {name}.")
 
 
 def display_leaderboard(leaders):
     """
-    Print the leaderboard showing all saved player names and scores.
-
-    Args:
-        leaders (dict): Dictionary of {player_name: score}.
-
-    Returns:
-        None
+    Display leaderboard sorted by highest score.
     """
     print("-" * 30)
-    if len(leaders) == 0:
+
+    if not leaders:
         print("No scores yet. Play some games first.")
     else:
-        print("Name       Score")
-        print("-" * 20)
-        for name in leaders:
-            print(name, "   ", leaders[name])
+        print(f"{'Name':<15}{'Score'}")
+        print("-" * 25)
+
+        sorted_scores = sorted(
+            leaders.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )
+
+        for name, score in sorted_scores:
+            print(f"{name:<15}{score}")
+
     print("-" * 30)
