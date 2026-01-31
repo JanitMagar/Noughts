@@ -7,7 +7,7 @@ Student ID: 2603768
 import random
 import os
 import json
-
+random.seed()
 
 def draw_board(board):
     """
